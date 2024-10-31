@@ -25,7 +25,7 @@
 
 // Import necessary modules
 const fs = require('fs');
-const readline = require('readline');
+const readline = require('readline').promises;
 const { Configuration, OpenAIApi } = require('openai');
 const commander = require('commander');
 const config = require('config'); // Library for configuration management
@@ -48,8 +48,10 @@ const filePath = program.args[0];
 const promptMessage = options.message;
 const outputFile = options.output;
 
-// Main function to run the script
-(async () => {
+/**
+ * Main function to run the script.
+ */
+async function main() {
   try {
     // Load configuration from config.js
     const apiKey = config.get('apiKey');
@@ -85,32 +87,29 @@ const outputFile = options.output;
     console.error('Error:', error.message);
     process.exit(1);
   }
-})();
+}
 
 /**
  * Function to get input data from a file or stdin.
  * @param {string} filePath - The path to the input file.
  * @returns {Promise<string>} - The input data as a string.
  */
-function getInputData(filePath) {
-  return new Promise((resolve, reject) => {
-    if (filePath) {
-      // Read from the specified file
-      fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) return reject(err);
-        resolve(data);
-      });
-    } else if (!process.stdin.isTTY) {
-      // Read from stdin
-      let data = '';
-      process.stdin.setEncoding('utf8');
-      process.stdin.on('data', chunk => (data += chunk));
-      process.stdin.on('end', () => resolve(data));
-    } else {
-      // No input provided
-      program.help();
+async function getInputData(filePath) {
+  if (filePath) {
+    // Read from the specified file
+    return await fs.promises.readFile(filePath, 'utf8');
+  } else if (!process.stdin.isTTY) {
+    // Read from stdin
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    for await (const chunk of process.stdin) {
+      data += chunk;
     }
-  });
+    return data;
+  } else {
+    // No input provided
+    program.help();
+  }
 }
 
 /**
@@ -118,23 +117,20 @@ function getInputData(filePath) {
  * @param {string} promptMessage - The prompt message from the CLI option.
  * @returns {Promise<string>} - The prompt message.
  */
-function getPrompt(promptMessage) {
-  return new Promise((resolve) => {
-    if (promptMessage) {
-      // Use the prompt provided via the -m option
-      resolve(promptMessage);
-    } else {
-      // Prompt the user to enter a prompt interactively
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-      rl.question('Enter your prompt: ', (answer) => {
-        rl.close();
-        resolve(answer);
-      });
-    }
-  });
+async function getPrompt(promptMessage) {
+  if (promptMessage) {
+    // Use the prompt provided via the -m option
+    return promptMessage;
+  } else {
+    // Prompt the user to enter a prompt interactively
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const answer = await rl.question('Enter your prompt: ');
+    rl.close();
+    return answer;
+  }
 }
 
 /**
@@ -142,19 +138,16 @@ function getPrompt(promptMessage) {
  * @param {string} result - The AI's reply.
  * @param {string} outputFile - The path to the output file.
  */
-function outputResult(result, outputFile) {
-  return new Promise((resolve, reject) => {
-    if (outputFile) {
-      // Write the result to the specified output file
-      fs.writeFile(outputFile, result, 'utf8', (err) => {
-        if (err) return reject(err);
-        console.log(`Output saved to ${outputFile}`);
-        resolve();
-      });
-    } else {
-      // Output the result to stdout
-      console.log(result);
-      resolve();
-    }
-  });
+async function outputResult(result, outputFile) {
+  if (outputFile) {
+    // Write the result to the specified output file
+    await fs.promises.writeFile(outputFile, result, 'utf8');
+    console.log(`Output saved to ${outputFile}`);
+  } else {
+    // Output the result to stdout
+    console.log(result);
+  }
 }
+
+// Execute the main function
+main();
