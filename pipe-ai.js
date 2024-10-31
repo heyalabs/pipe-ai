@@ -25,10 +25,12 @@
 
 // Import necessary modules
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const readline = require('readline').promises;
 const { Configuration, OpenAIApi } = require('openai');
 const commander = require('commander');
-const config = require('config'); // Library for configuration management
+const config = require('config');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -40,6 +42,7 @@ program
   .argument('[file]', 'File path to read input from')
   .option('-m, --message <prompt>', 'Prompt message for the AI')
   .option('-o, --output <file>', 'Output file to save the AI response')
+  .option('-c, --config <path>', 'Path to the configuration file or configuration name')
   .parse(process.argv);
 
 // Extract options and arguments
@@ -53,12 +56,14 @@ const outputFile = options.output;
  */
 async function main() {
   try {
-    // Load configuration from config.js
-    const apiKey = config.get('apiKey');
-    const model = config.get('model') || 'gpt-3.5-turbo';
+    // Load configuration
+    const configData = loadConfiguration(options.config);
 
-    // Create OpenAI client
-    const openai = new OpenAIApi(new Configuration({ apiKey }));
+    // Create OpenAI client using the configuration object
+    const openai = new OpenAIApi(new Configuration({
+      apiKey: configData.apiKey,
+      ...configData.configuration,
+    }));
 
     // Get input data (from file or stdin)
     const inputData = await getInputData(filePath);
@@ -74,7 +79,7 @@ async function main() {
 
     // Call the OpenAI API
     const response = await openai.createChatCompletion({
-      model,
+      ...configData.defaultRequestOptions,
       messages,
     });
 
@@ -87,6 +92,36 @@ async function main() {
     console.error('Error:', error.message);
     process.exit(1);
   }
+}
+
+/**
+ * Function to load the configuration based on the provided option.
+ * @param {string} configOption - The configuration file path or name.
+ * @returns {object} - The configuration data.
+ */
+function loadConfiguration(configOption) {
+  let configData;
+
+  if (configOption) {
+    const configDir = `${os.homedir()}/.pipe-ai/config`;
+    const configPath = path.resolve(configOption);
+
+    if (fs.existsSync(configPath)) {
+      // If the path exists, load the configuration file directly
+      configData = require(configPath);
+    } else if (fs.existsSync(path.join(configDir, `${configOption}.json`))) {
+      // If a named config exists in the config directory
+      configData = require(path.join(configDir, `${configOption}.json`));
+    } else {
+      console.error(`Configuration '${configOption}' not found.`);
+      process.exit(1);
+    }
+  } else {
+    // Load default configuration
+    configData = config.util.toObject();
+  }
+
+  return configData;
 }
 
 /**
