@@ -1,0 +1,19 @@
+{
+  "name": "pipe-ai",
+  "version": "1.0.0",
+  "description": "A command-line tool to interface with OpenAI API using piped input or files.",
+  "main": "pipe-ai.js",
+  "author": "Alex Ksikes",
+  "license": "ISC",
+  "bin": {
+    "pipe-ai": "./pipe-ai.js"
+  },
+  "volta": {
+    "node": "20.18.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "config": "^3.3.12",
+    "openai": "^4.69.0"
+  }
+}
