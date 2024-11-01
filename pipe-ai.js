@@ -28,9 +28,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const readline = require('readline').promises;
-const { Configuration, OpenAIApi } = require('openai');
 const commander = require('commander');
-const config = require('config');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -38,11 +36,11 @@ const program = new commander.Command();
 // Define the CLI options and arguments
 program
   .version('1.0.0')
-  .description('A CLI tool to interface with OpenAI API using piped input or files.')
+  .description('A CLI tool to interface with AI APIs using piped input or files.')
   .argument('[file]', 'File path to read input from')
   .option('-m, --message <prompt>', 'Prompt message for the AI')
   .option('-o, --output <file>', 'Output file to save the AI response')
-  .option('-c, --config <path>', 'Path to the configuration file or configuration name')
+  .option('-c, --config <path>', 'Path to the configuration file')
   .parse(process.argv);
 
 // Extract options and arguments
@@ -50,6 +48,7 @@ const options = program.opts();
 const filePath = program.args[0];
 const promptMessage = options.message;
 const outputFile = options.output;
+const configPath = options.config;
 
 /**
  * Main function to run the script.
@@ -57,13 +56,20 @@ const outputFile = options.output;
 async function main() {
   try {
     // Load configuration
-    const configData = loadConfiguration(options.config);
+    const configData = loadConfiguration(configPath);
 
-    // Create OpenAI client using the configuration object
-    const openai = new OpenAIApi(new Configuration({
-      apiKey: configData.apiKey,
-      ...configData.configuration,
-    }));
+    // Get the provider from the config data
+    const providerName = configData.provider;
+    if (!providerName) {
+      throw new Error('Provider not specified in the configuration file.');
+    }
+
+    // Dynamically require the provider module
+    const providerModulePath = path.join(__dirname, 'providers', `${providerName}.js`);
+    if (!fs.existsSync(providerModulePath)) {
+      throw new Error(`Provider module '${providerName}' not found.`);
+    }
+    const providerModule = require(providerModulePath);
 
     // Get input data (from file or stdin)
     const inputData = await getInputData(filePath);
@@ -71,20 +77,8 @@ async function main() {
     // Get prompt (from option or interactively)
     const prompt = await getPrompt(promptMessage);
 
-    // Combine input data and prompt to form the message
-    const messages = [
-      { role: 'system', content: inputData },
-      { role: 'user', content: prompt },
-    ];
-
-    // Call the OpenAI API
-    const response = await openai.createChatCompletion({
-      ...configData.defaultRequestOptions,
-      messages,
-    });
-
-    // Extract the AI's reply
-    const aiReply = response.data.choices[0].message.content;
+    // Generate AI response
+    const aiReply = await providerModule.getAIResponse(configData, inputData, prompt);
 
     // Output the AI's reply
     await outputResult(aiReply, outputFile);
@@ -95,32 +89,38 @@ async function main() {
 }
 
 /**
- * Function to load the configuration based on the provided option.
- * @param {string} configOption - The configuration file path or name.
+ * Function to load the configuration based on the provided path.
+ * @param {string} configOption - The configuration file path.
  * @returns {object} - The configuration data.
  */
 function loadConfiguration(configOption) {
-  let configData;
+  const homeDir = os.homedir();
+  const defaultConfigDir = path.join(homeDir, '.config', 'pipe-ai');
+  const fallbackConfigDir = path.join(__dirname, 'config');
+  let configFilePath;
 
   if (configOption) {
-    const configDir = `${os.homedir()}/.pipe-ai/config`;
-    const configPath = path.resolve(configOption);
-
-    if (fs.existsSync(configPath)) {
-      // If the path exists, load the configuration file directly
-      configData = require(configPath);
-    } else if (fs.existsSync(path.join(configDir, `${configOption}.json`))) {
-      // If a named config exists in the config directory
-      configData = require(path.join(configDir, `${configOption}.json`));
-    } else {
-      console.error(`Configuration '${configOption}' not found.`);
-      process.exit(1);
+    configFilePath = path.resolve(configOption);
+    if (!fs.existsSync(configFilePath)) {
+      throw new Error(`Configuration file not found at ${configFilePath}`);
     }
   } else {
-    // Load default configuration
-    configData = config.util.toObject();
+    // Try to load 'config.json' from the default directories
+    const defaultConfigPath = path.join(defaultConfigDir, 'config.json');
+    const fallbackConfigPath = path.join(fallbackConfigDir, 'config.json');
+
+    if (fs.existsSync(defaultConfigPath)) {
+      configFilePath = defaultConfigPath;
+    } else if (fs.existsSync(fallbackConfigPath)) {
+      configFilePath = fallbackConfigPath;
+    } else {
+      throw new Error('No configuration file found.');
+    }
   }
 
+  // Read and parse the configuration file
+  const configContent = fs.readFileSync(configFilePath, 'utf8');
+  const configData = JSON.parse(configContent);
   return configData;
 }
 
@@ -143,7 +143,8 @@ async function getInputData(filePath) {
     return data;
   } else {
     // No input provided
-    program.help();
+    console.error('No input provided. Please provide input via a file or stdin.');
+    process.exit(1);
   }
 }
 
