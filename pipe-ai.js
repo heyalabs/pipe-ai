@@ -39,9 +39,9 @@ program
   .version('1.0.0')
   .description('A CLI tool to interface with AI APIs using piped input or files.')
   .argument('[file]', 'File path to read input from')
-  .option('-m, --message <prompt>', 'Prompt message for the AI')
-  .option('-o, --output <file>', 'Output file to save the AI response')
-  .option('-c, --config <path>', 'Path to the configuration file')
+  .option('-m, --message <prompt>', 'Prompt message for the AI (default: ask)')
+  .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
+  .option('-c, --config <path>', 'Path to the configuration file (default: ./config/config.yaml)')
   .parse(process.argv);
 
 // Extract options and arguments
@@ -145,6 +145,7 @@ async function getInputData(filePath) {
   } else {
     // No input provided
     console.error('No input provided. Please provide input via a file or stdin.');
+    program.help()
     process.exit(1);
   }
 }
