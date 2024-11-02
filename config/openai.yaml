@@ -1,0 +1,23 @@
+# Specify the AI provider
+provider: openai
+
+# Your OpenAI API key
+apiKey: your-openai-api-key
+
+# OpenAI client configuration
+configuration:
+  organization: your-organization-id  # Optional
+  basePath: https://api.openai.com/v1  # Optional
+  defaultHeaders:
+    Custom-Header: value  # Optional
+
+# Default request options for the OpenAI API
+defaultRequestOptions:
+  model: gpt-3.5-turbo
+  temperature: 0.7
+  max_tokens: 150
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop:
+    - "\n"

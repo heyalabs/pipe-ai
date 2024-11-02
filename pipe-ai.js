@@ -19,7 +19,7 @@
  *
  * Description:
  *   This script reads input from stdin or a file, takes a prompt (either via the `-m` option or interactively),
- *   and sends the data to the OpenAI API using the configuration specified in `config.js`.
+ *   and sends the data to the OpenAI API using the configuration specified in `config.yaml`.
  *   The response from the API is then output to stdout or saved to a file if the `-o` option is used.
  */
 
@@ -29,6 +29,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline').promises;
 const commander = require('commander');
+const yaml = require('js-yaml');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -105,9 +106,9 @@ function loadConfiguration(configOption) {
       throw new Error(`Configuration file not found at ${configFilePath}`);
     }
   } else {
-    // Try to load 'config.json' from the default directories
-    const defaultConfigPath = path.join(defaultConfigDir, 'config.json');
-    const fallbackConfigPath = path.join(fallbackConfigDir, 'config.json');
+    // Try to load 'config.yaml' from the default directories
+    const defaultConfigPath = path.join(defaultConfigDir, 'config.yaml');
+    const fallbackConfigPath = path.join(fallbackConfigDir, 'config.yaml');
 
     if (fs.existsSync(defaultConfigPath)) {
       configFilePath = defaultConfigPath;
@@ -120,7 +121,7 @@ function loadConfiguration(configOption) {
 
   // Read and parse the configuration file
   const configContent = fs.readFileSync(configFilePath, 'utf8');
-  const configData = JSON.parse(configContent);
+  const configData = yaml.load(configContent);
   return configData;
 }
 
