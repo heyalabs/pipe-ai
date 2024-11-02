@@ -1,26 +1,26 @@
-const { Configuration, OpenAIApi } = require('openai');
+const { OpenAI } = require('openai');
 
 async function getAIResponse(configData, inputData, prompt) {
-  // Create OpenAI client using the configuration object
-  const openai = new OpenAIApi(new Configuration({
+  // Create OpenAI client
+  const openai = new OpenAI({
+    apiKey: configData.apiKey,
     ...configData.configuration,
-    apiKey: configData.apiKey, // Specify apiKey last to prevent overwriting
-  }));
+  });
 
-  // Combine input data and prompt to form the messages
+  // Combine input data and prompt
   const messages = [
     { role: 'system', content: inputData },
     { role: 'user', content: prompt },
   ];
 
   // Call the OpenAI API
-  const response = await openai.createChatCompletion({
+  const response = await openai.chat.completions.create({
     ...configData.defaultRequestOptions,
     messages,
   });
 
   // Extract the AI's reply
-  return response.data.choices[0].message.content;
+  return response.choices[0].message.content;
 }
 
 module.exports = { getAIResponse };
