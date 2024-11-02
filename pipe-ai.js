@@ -27,7 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readline = require('readline').promises;
+const readlineSync = require('readline-sync');
 const commander = require('commander');
 const yaml = require('js-yaml');
 
@@ -160,13 +160,14 @@ async function getPrompt(promptMessage) {
     // Use the prompt provided via the -m option
     return promptMessage;
   } else {
-    // Prompt the user to enter a prompt interactively
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    const answer = await rl.question('Enter your prompt: ');
-    rl.close();
+    // Use readline-sync to prompt the user synchronously
+    const answer = readlineSync.question('Enter your prompt: ');
+
+    if (!answer) {
+      console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
+      process.exit(1);
+    }
+
     return answer;
   }
 }
