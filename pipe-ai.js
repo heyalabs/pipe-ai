@@ -27,9 +27,9 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readlineSync = require('readline-sync');
 const commander = require('commander');
 const yaml = require('js-yaml');
+const readline = require('readline');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -79,7 +79,7 @@ async function main() {
     const prompt = await getPrompt(promptMessage);
 
     // Inform the user that the prompt is received
-    console.error('Prompt received. Retrieving response...');
+    console.error('\nPrompt received. Retrieving response...');
 
     // Generate AI response
     const aiReply = await providerModule.getAIResponse(configData, inputData, prompt);
@@ -162,26 +162,48 @@ async function getPrompt(promptMessage) {
   if (promptMessage) {
     return promptMessage;
   } else {
-    // Instructions for the user
-    console.log("Enter your prompt. When you're done, type 'END' on a new line and press Enter.");
+    // Determine the EOF key based on the operating system
+    const eofKey = os.platform() === 'win32' ? 'Ctrl+Z (then Enter)' : 'Ctrl+D';
+
+    // Determine the input stream for readline
+    let input = process.stdin;
+    if (!process.stdin.isTTY) {
+      // stdin is not a TTY (e.g., being piped), so try to read from /dev/tty
+      try {
+        input = fs.createReadStream('/dev/tty');
+      } catch (err) {
+        console.error('Cannot open /dev/tty for reading. Please provide a prompt using the -m option.');
+        process.exit(1);
+      }
+    }
+
+    console.error(`Enter your prompt (press ${eofKey} to submit):`);
+
+    const rl = readline.createInterface({
+      input: input,
+      output: null,        // Prevents echoing the input
+      terminal: false,     // Disables default terminal behavior
+      prompt: "> "
+    });
 
     const lines = [];
-    while (true) {
-      const line = readlineSync.question('', { hideEchoBack: false, mask: '' });
-      if (line === 'END') {
-        break;
-      }
-      lines.push(line);
-    }
 
-    const prompt = lines.join('\n');
+    return new Promise((resolve) => {
+      process.stderr.write('> ')
 
-    if (!prompt.trim()) {
-      console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
-      process.exit(1);
-    }
+      rl.on('line', (line) => {
+        lines.push(line);
+      });
 
-    return prompt;
+      rl.on('close', () => {
+        const prompt = lines.join('\n');
+        if (!prompt.trim()) {
+          console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
+          process.exit(1);
+        }
+        resolve(prompt);
+      });
+    });
   }
 }
 
