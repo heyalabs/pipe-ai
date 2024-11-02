@@ -78,6 +78,9 @@ async function main() {
     // Get prompt (from option or interactively)
     const prompt = await getPrompt(promptMessage);
 
+    // Inform the user that the prompt is received
+    console.error('Prompt received. Retrieving response...');
+
     // Generate AI response
     const aiReply = await providerModule.getAIResponse(configData, inputData, prompt);
 
@@ -157,18 +160,28 @@ async function getInputData(filePath) {
  */
 async function getPrompt(promptMessage) {
   if (promptMessage) {
-    // Use the prompt provided via the -m option
     return promptMessage;
   } else {
-    // Use readline-sync to prompt the user synchronously
-    const answer = readlineSync.question('Enter your prompt: ');
+    // Instructions for the user
+    console.log("Enter your prompt. When you're done, type 'END' on a new line and press Enter.");
 
-    if (!answer) {
+    const lines = [];
+    while (true) {
+      const line = readlineSync.question('', { hideEchoBack: false, mask: '' });
+      if (line === 'END') {
+        break;
+      }
+      lines.push(line);
+    }
+
+    const prompt = lines.join('\n');
+
+    if (!prompt.trim()) {
       console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
       process.exit(1);
     }
 
-    return answer;
+    return prompt;
   }
 }
 
@@ -181,7 +194,7 @@ async function outputResult(result, outputFile) {
   if (outputFile) {
     // Write the result to the specified output file
     await fs.promises.writeFile(outputFile, result, 'utf8');
-    console.log(`Output saved to ${outputFile}`);
+    console.error(`Output saved to ${outputFile}`);
   } else {
     // Output the result to stdout
     console.log(result);
