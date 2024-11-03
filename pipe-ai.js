@@ -40,6 +40,7 @@ program
   .description('A CLI tool to interface with AI APIs using piped input or files.')
   .argument('[file]', 'File path to read input from')
   .option('-m, --message <prompt>', 'Prompt message for the AI (default: ask)')
+  .option('-p, --prompt <name|path>', 'Name or path of a pre-defined prompt to use')
   .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
   .option('-c, --config <path>', 'Path to the configuration file (default: ./config/config.yaml)')
   .parse(process.argv);
@@ -48,6 +49,7 @@ program
 const options = program.opts();
 const filePath = program.args[0];
 const promptMessage = options.message;
+const prePromptOption = options.prompt;
 const outputFile = options.output;
 const configPath = options.config;
 
@@ -75,14 +77,33 @@ async function main() {
     // Get input data (from file or stdin)
     const inputData = await getInputData(filePath);
 
-    // Get prompt (from option or interactively)
-    const prompt = await getPrompt(promptMessage);
+    // Load pre-prompt if specified
+    let prePrompt = '';
+    if (prePromptOption) {
+      prePrompt = loadPrePrompt(prePromptOption);
+    }
+
+    // Determine if we need to get a prompt message from the user
+    let prompt = '';
+    if (promptMessage) {
+      // Use the prompt provided via the -m option
+      prompt = promptMessage;
+    } else if (!prePrompt) {
+      // No pre-prompt or -m option; get prompt interactively
+      prompt = await getPrompt();
+    } else {
+      // Use only the pre-prompt
+      prompt = '';
+    }
+
+    // Combine pre-prompt and prompt
+    const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
 
     // Inform the user that the prompt is received
     console.error('\nPrompt received. Retrieving response...');
 
     // Generate AI response
-    const aiReply = await providerModule.getAIResponse(configData, inputData, prompt);
+    const aiReply = await providerModule.getAIResponse(configData, inputData, fullPrompt);
 
     // Output the AI's reply
     await outputResult(aiReply, outputFile);
@@ -154,57 +175,52 @@ async function getInputData(filePath) {
 }
 
 /**
- * Function to get the prompt message.
- * @param {string} promptMessage - The prompt message from the CLI option.
+ * Function to get the prompt message interactively.
  * @returns {Promise<string>} - The prompt message.
  */
-async function getPrompt(promptMessage) {
-  if (promptMessage) {
-    return promptMessage;
-  } else {
-    // Determine the EOF key based on the operating system
-    const eofKey = os.platform() === 'win32' ? 'Ctrl+Z (then Enter)' : 'Ctrl+D';
+async function getPrompt() {
+  // Determine the EOF key based on the operating system
+  const eofKey = os.platform() === 'win32' ? 'Ctrl+Z (then Enter)' : 'Ctrl+D';
 
-    // Determine the input stream for readline
-    let input = process.stdin;
-    if (!process.stdin.isTTY) {
-      // stdin is not a TTY (e.g., being piped), so try to read from /dev/tty
-      try {
-        input = fs.createReadStream('/dev/tty');
-      } catch (err) {
-        console.error('Cannot open /dev/tty for reading. Please provide a prompt using the -m option.');
-        process.exit(1);
-      }
+  // Determine the input stream for readline
+  let input = process.stdin;
+  if (!process.stdin.isTTY) {
+    // stdin is not a TTY (e.g., being piped), so try to read from /dev/tty
+    try {
+      input = fs.createReadStream('/dev/tty');
+    } catch (err) {
+      console.error('Cannot open /dev/tty for reading. Please provide a prompt using the -m option.');
+      process.exit(1);
     }
+  }
 
-    console.error(`Enter your prompt (press ${eofKey} to submit):`);
+  console.error(`Enter your prompt (press ${eofKey} to submit):`);
 
-    const rl = readline.createInterface({
-      input: input,
+  const rl = readline.createInterface({
+    input: input,
       output: null,        // Prevents echoing the input
       terminal: false,     // Disables default terminal behavior
       prompt: "> "
-    });
+  });
 
-    const lines = [];
+  const lines = [];
 
-    return new Promise((resolve) => {
+  return new Promise((resolve) => {
       process.stderr.write('> ')
 
-      rl.on('line', (line) => {
-        lines.push(line);
-      });
-
-      rl.on('close', () => {
-        const prompt = lines.join('\n');
-        if (!prompt.trim()) {
-          console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
-          process.exit(1);
-        }
-        resolve(prompt);
-      });
+    rl.on('line', (line) => {
+      lines.push(line);
     });
-  }
+
+    rl.on('close', () => {
+      const prompt = lines.join('\n');
+      if (!prompt.trim()) {
+        console.error('Prompt cannot be empty. Please provide a prompt using the -m option.');
+        process.exit(1);
+      }
+      resolve(prompt);
+    });
+  });
 }
 
 /**
@@ -221,6 +237,41 @@ async function outputResult(result, outputFile) {
     // Output the result to stdout
     console.log(result);
   }
+}
+
+/**
+ * Function to load a pre-defined prompt based on name or path.
+ * @param {string} promptOption - The name or path of the prompt file.
+ * @returns {string} - The content of the prompt file.
+ */
+function loadPrePrompt(promptOption) {
+  let promptFilePath;
+
+  // Check if the promptOption is a path to an existing file
+  if (fs.existsSync(promptOption)) {
+    promptFilePath = promptOption;
+  } else {
+    // Construct possible prompt directories
+    const homeDir = os.homedir();
+    const userPromptsDir = path.join(homeDir, '.config', 'pipe-ai', 'prompts');
+    const defaultPromptsDir = path.join(__dirname, 'prompts');
+
+    // Construct possible prompt file paths
+    const userPromptPath = path.join(userPromptsDir, `${promptOption}.txt`);
+    const defaultPromptPath = path.join(defaultPromptsDir, `${promptOption}.txt`);
+
+    if (fs.existsSync(userPromptPath)) {
+      promptFilePath = userPromptPath;
+    } else if (fs.existsSync(defaultPromptPath)) {
+      promptFilePath = defaultPromptPath;
+    } else {
+      throw new Error(`Prompt file '${promptOption}' not found.`);
+    }
+  }
+
+  // Read and return the content of the prompt file
+  const promptContent = fs.readFileSync(promptFilePath, 'utf8');
+  return promptContent;
 }
 
 // Execute the main function
