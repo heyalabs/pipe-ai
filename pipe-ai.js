@@ -17,10 +17,20 @@
  *   - Outputting to a file:
  *     $ git log | pipe-ai -m "Summarize the git log." -o output.txt
  *
+ *   - Using a pre-defined prompt by name:
+ *     $ git log | pipe-ai -p summarize
+ *
+ *   - Using a pre-defined prompt by path:
+ *     $ git log | pipe-ai -p /path/to/custom-prompt.txt
+ *
+ *   - Combining pre-defined prompt with a custom message:
+ *     $ git log | pipe-ai -p summarize -m "Include author names."
+ *
  * Description:
- *   This script reads input from stdin or a file, takes a prompt (either via the `-m` option or interactively),
- *   and sends the data to the OpenAI API using the configuration specified in `config.yaml`.
- *   The response from the API is then output to stdout or saved to a file if the `-o` option is used.
+ *   This script reads input from stdin or a file, takes a prompt (either via the `-m` option,
+ *   the `-p` option for pre-defined prompts, or interactively), and sends the data to the
+ *   OpenAI API using the configuration specified in `config.yaml`. The response from the API
+ *   is then output to stdout or saved to a file if the `-o` option is used.
  */
 
 // Import necessary modules
@@ -30,6 +40,7 @@ const os = require('os');
 const commander = require('commander');
 const yaml = require('js-yaml');
 const readline = require('readline');
+const { loadFile } = require('./lib/utils');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -42,7 +53,7 @@ program
   .option('-m, --message <prompt>', 'Prompt message for the AI (default: ask)')
   .option('-p, --prompt <name|path>', 'Name or path of a pre-defined prompt to use')
   .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
-  .option('-c, --config <path>', 'Path to the configuration file (default: ./config/config.yaml)')
+  .option('-c, --config <name|path>', 'Path of the configuration file (default: ./config/config.yaml)')
   .parse(process.argv);
 
 // Extract options and arguments
@@ -90,7 +101,7 @@ async function main() {
       prompt = promptMessage;
     } else if (!prePrompt) {
       // No pre-prompt or -m option; get prompt interactively
-      prompt = await getPrompt();
+      prompt = await getInteractiveUserPrompt();
     } else {
       // Use only the pre-prompt
       prompt = '';
@@ -114,39 +125,41 @@ async function main() {
 }
 
 /**
- * Function to load the configuration based on the provided path.
- * @param {string} configOption - The configuration file path.
- * @returns {object} - The configuration data.
+ * Function to load the configuration.
+ *
+ * @param {string} [configOption] - The configuration file path or name.
+ * @returns {object} - The parsed configuration data.
+ * @throws {Error} - If the configuration file is missing required fields or not found.
  */
 function loadConfiguration(configOption) {
-  const homeDir = os.homedir();
-  const defaultConfigDir = path.join(homeDir, '.config', 'pipe-ai');
-  const fallbackConfigDir = path.join(__dirname, 'config');
-  let configFilePath;
+  // Load the configuration file content
+  const content = loadFile(configOption || 'config', 'config');
 
-  if (configOption) {
-    configFilePath = path.resolve(configOption);
-    if (!fs.existsSync(configFilePath)) {
-      throw new Error(`Configuration file not found at ${configFilePath}`);
-    }
-  } else {
-    // Try to load 'config.yaml' from the default directories
-    const defaultConfigPath = path.join(defaultConfigDir, 'config.yaml');
-    const fallbackConfigPath = path.join(fallbackConfigDir, 'config.yaml');
+  // Parse the YAML configuration
+  const data = yaml.load(content);
 
-    if (fs.existsSync(defaultConfigPath)) {
-      configFilePath = defaultConfigPath;
-    } else if (fs.existsSync(fallbackConfigPath)) {
-      configFilePath = fallbackConfigPath;
-    } else {
-      throw new Error('No configuration file found.');
-    }
+  // Validate that the 'provider' key exists
+  if (!data.provider) {
+    throw new Error("Configuration error: 'provider' key is missing in the configuration file.");
   }
 
-  // Read and parse the configuration file
-  const configContent = fs.readFileSync(configFilePath, 'utf8');
-  const configData = yaml.load(configContent);
-  return configData;
+  return data;
+}
+
+/**
+ * Function to load a pre-defined prompt based on name or path.
+ *
+ * @param {string} promptOption - The name or path of the prompt file.
+ * @returns {string} - The content of the prompt file.
+ * @throws {Error} - If the prompt file is not found.
+ */
+function loadPrePrompt(promptOption) {
+  if (!promptOption) {
+    throw new Error("Prompt option '-p' or '--prompt' requires a value.");
+  }
+
+  // Load the prompt file content
+  return loadFile(promptOption, 'prompt');
 }
 
 /**
@@ -178,7 +191,7 @@ async function getInputData(filePath) {
  * Function to get the prompt message interactively.
  * @returns {Promise<string>} - The prompt message.
  */
-async function getPrompt() {
+async function getInteractiveUserPrompt() {
   // Determine the EOF key based on the operating system
   const eofKey = os.platform() === 'win32' ? 'Ctrl+Z (then Enter)' : 'Ctrl+D';
 
@@ -206,7 +219,7 @@ async function getPrompt() {
   const lines = [];
 
   return new Promise((resolve) => {
-      process.stderr.write('> ')
+    process.stderr.write('> ')
 
     rl.on('line', (line) => {
       lines.push(line);
@@ -237,41 +250,6 @@ async function outputResult(result, outputFile) {
     // Output the result to stdout
     console.log(result);
   }
-}
-
-/**
- * Function to load a pre-defined prompt based on name or path.
- * @param {string} promptOption - The name or path of the prompt file.
- * @returns {string} - The content of the prompt file.
- */
-function loadPrePrompt(promptOption) {
-  let promptFilePath;
-
-  // Check if the promptOption is a path to an existing file
-  if (fs.existsSync(promptOption)) {
-    promptFilePath = promptOption;
-  } else {
-    // Construct possible prompt directories
-    const homeDir = os.homedir();
-    const userPromptsDir = path.join(homeDir, '.config', 'pipe-ai', 'prompts');
-    const defaultPromptsDir = path.join(__dirname, 'prompts');
-
-    // Construct possible prompt file paths
-    const userPromptPath = path.join(userPromptsDir, `${promptOption}.txt`);
-    const defaultPromptPath = path.join(defaultPromptsDir, `${promptOption}.txt`);
-
-    if (fs.existsSync(userPromptPath)) {
-      promptFilePath = userPromptPath;
-    } else if (fs.existsSync(defaultPromptPath)) {
-      promptFilePath = defaultPromptPath;
-    } else {
-      throw new Error(`Prompt file '${promptOption}' not found.`);
-    }
-  }
-
-  // Read and return the content of the prompt file
-  const promptContent = fs.readFileSync(promptFilePath, 'utf8');
-  return promptContent;
 }
 
 // Execute the main function
