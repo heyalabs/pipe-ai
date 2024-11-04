@@ -26,11 +26,14 @@
  *   - Combining pre-defined prompt with a custom message:
  *     $ git log | pipe-ai -p summarize -m "Include author names."
  *
+ *   - Using the default editor for prompt composition:
+ *     $ git log | pipe-ai --editor
+ *
  * Description:
  *   This script reads input from stdin or a file, takes a prompt (either via the `-m` option,
- *   the `-p` option for pre-defined prompts, or interactively), and sends the data to the
- *   OpenAI API using the configuration specified in `config.yaml`. The response from the API
- *   is then output to stdout or saved to a file if the `-o` option is used.
+ *   the `-p` option for pre-defined prompts, the `--editor` option to compose in the default editor,
+ *   or interactively), and sends the data to the OpenAI API using the configuration specified in `config.yaml`.
+ *   The response from the API is then output to stdout or saved to a file if the `-o` option is used.
  */
 
 // Import necessary modules
@@ -39,7 +42,7 @@ const path = require('path');
 const commander = require('commander');
 const yaml = require('js-yaml');
 const { loadFile } = require('./lib/utils');
-const { getInputData, getInteractiveUserPrompt, outputResult } = require('./lib/common');
+const { getInputData, getInteractiveUserPrompt, outputResult, getPromptFromEditor } = require('./lib/common');
 
 // Initialize the command-line interface
 const program = new commander.Command();
@@ -50,9 +53,10 @@ program
   .description('A CLI tool to interface with AI APIs using piped input or files.')
   .argument('[file]', 'File path to read input from')
   .option('-m, --message <prompt>', 'Prompt message for the AI (default: ask)')
-  .option('-p, --prompt <name|path>', 'Name or path of a pre-defined prompt to use')
+  .option('-p, --pre-prompt <name|path>', 'Name or path of a pre-defined prompt to use')
   .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
   .option('-c, --config <name|path>', 'Path of the configuration file (default: ./config/config.yaml)')
+  .option('-e, --editor', 'Open the default editor to compose the prompt')
   .parse(process.argv);
 
 // Extract options and arguments
@@ -62,6 +66,7 @@ const promptMessage = options.message;
 const prePromptOption = options.prompt;
 const outputFile = options.output;
 const configPath = options.config;
+const useEditor = options.editor;
 
 /**
  * Main function to run the script.
@@ -93,24 +98,14 @@ async function main() {
       prePrompt = loadPrePrompt(prePromptOption);
     }
 
-    // Determine if we need to get a prompt message from the user
-    let prompt = '';
-    if (promptMessage) {
-      // Use the prompt provided via the -m option
-      prompt = promptMessage;
-    } else if (!prePrompt) {
-      // No pre-prompt or -m option; get prompt interactively
-      prompt = await getInteractiveUserPrompt();
-    } else {
-      // Use only the pre-prompt
-      prompt = '';
-    }
+    // Determine how to get the main prompt
+    const prompt = await getPrompt(useEditor, promptMessage, prePrompt);
 
     // Combine pre-prompt and prompt
     const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
 
     // Inform the user that the prompt is received
-    console.error('\nPrompt received. Retrieving response...');
+    console.error('\nPrompt received. Retrieving response... (Further input will not be considered)');
 
     // Generate AI response
     const aiReply = await providerModule.getAIResponse(configData, inputData, fullPrompt);
@@ -159,6 +154,50 @@ function loadPrePrompt(promptOption) {
 
   // Load the prompt file content
   return loadFile(promptOption, 'prompt');
+}
+
+/**
+ * Determines and retrieves the main prompt based on user-specified options.
+ *
+ * @param {boolean} useEditor - Flag indicating whether to use the default editor for prompt composition.
+ * @param {string} promptMessage - The custom message provided via the `-m` or `--message` option.
+ * @param {string} prePrompt - The pre-defined prompt content loaded via the `-p` or `--prompt` option.
+ * @returns {Promise<string>} - The final prompt to be used for the AI API.
+ */
+async function getPrompt(useEditor, promptMessage, prePrompt) {
+  // Initialize the prompt variable to store the final prompt
+  let prompt = '';
+
+  // Step 1: Use the default editor to compose the prompt if the `--editor` flag is set
+  if (useEditor) {
+    try {
+      // Invoke the editor and await the user's input
+      prompt = await getPromptFromEditor();
+    } catch (err) {
+      // Handle any errors that occur while opening the editor
+      console.error(`Error: ${err.message}`);
+      process.exit(1); // Exit the process with a failure code
+    }
+  }
+
+  // Step 2: Append the message provided via the `-m` or `--message` option, if available
+  if (promptMessage) {
+    prompt += `\n${promptMessage}`;
+  }
+
+  // Step 3: If no pre-prompt, no message, and editor is not used, invoke the interactive prompt
+  if (!prePrompt && !promptMessage && !useEditor) {
+    try {
+      // Invoke an interactive prompt to get the user's input
+      prompt = await getInteractiveUserPrompt();
+    } catch (err) {
+      // Handle any errors that occur during the interactive prompt
+      console.error(`Error: ${err.message}`);
+      process.exit(1); // Exit the process with a failure code
+    }
+  }
+
+  return prompt;
 }
 
 // Execute the main function
