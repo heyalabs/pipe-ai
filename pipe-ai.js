@@ -42,7 +42,7 @@ import fs from 'fs';
 import path from 'path';
 import { Command } from 'commander';
 import { log, withSpinner } from './lib/utils.js';
-import { getInputData, outputResult, getFilename, getDirname } from './lib/common.js';
+import { getInputData, outputResult, getDirname } from './lib/common.js';
 import process from 'process';
 import { pathToFileURL } from 'url';
 
@@ -59,7 +59,6 @@ import {
 const program = new Command();
 
 // Derive __dirname equivalent in ES modules
-const __filename = getFilename(import.meta.url);
 const __dirname = getDirname(import.meta.url);
 
 // Define the CLI options and arguments

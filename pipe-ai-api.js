@@ -2,11 +2,7 @@
 
 import yaml from 'js-yaml';
 import { loadFile, log } from './lib/utils.js';
-import { getInteractiveUserPrompt, getPromptFromEditor, getFilename, getDirname } from './lib/common.js';
-
-// Derive __dirname equivalent in ES modules
-const __filename = getFilename(import.meta.url);
-const __dirname = getDirname(import.meta.url);
+import { getInteractiveUserPrompt, getPromptFromEditor } from './lib/common.js';
 
 /**
  * Function to load the configuration.
