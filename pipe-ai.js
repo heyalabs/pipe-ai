@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// pipe-ai.js
 /**
  * pipe-ai: A command-line tool to interface with OpenAI API using piped input or files.
  *
@@ -37,15 +38,29 @@
  */
 
 // Import necessary modules
-const fs = require('fs');
-const path = require('path');
-const commander = require('commander');
-const yaml = require('js-yaml');
-const { loadFile } = require('./lib/utils');
-const { getInputData, getInteractiveUserPrompt, outputResult, getPromptFromEditor } = require('./lib/common');
+import fs from 'fs';
+import path from 'path';
+import { Command } from 'commander';
+import { log, withSpinner } from './lib/utils.js';
+import { getInputData, outputResult, getFilename, getDirname } from './lib/common.js';
+import process from 'process';
+import { pathToFileURL } from 'url';
+
+import {
+  loadConfiguration,
+  loadPrePrompt,
+  getPrompt,
+  handleSigint,
+  handleSigterm,
+  cleanup
+} from './pipe-ai-api.js';
 
 // Initialize the command-line interface
-const program = new commander.Command();
+const program = new Command();
+
+// Derive __dirname equivalent in ES modules
+const __filename = getFilename(import.meta.url);
+const __dirname = getDirname(import.meta.url);
 
 // Define the CLI options and arguments
 program
@@ -57,147 +72,90 @@ program
   .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
   .option('-c, --config <name|path>', 'Path of the configuration file (default: ./config/config.yaml)')
   .option('-e, --editor', 'Open the default editor to compose the prompt')
+  .option('-v, --verbose', 'Enable verbose logging')
   .parse(process.argv);
 
 // Extract options and arguments
 const options = program.opts();
 const filePath = program.args[0];
 const promptMessage = options.message;
-const prePromptOption = options.prompt;
+const prePromptOption = options.prePrompt;
 const outputFile = options.output;
 const configPath = options.config;
 const useEditor = options.editor;
+const verbose = options.verbose;
+
+// Optionally adjust logger level based on verbosity
+log.level = verbose ? 'debug' : 'error';
 
 /**
  * Main function to run the script.
  */
 async function main() {
   try {
-    // Load configuration
+    log.debug('# Attach signal handlers');
+    process.on('SIGINT', () => handleSigint((msg, code) => cleanup(msg, code)));
+    process.on('SIGTERM', () => handleSigterm((msg, code) => cleanup(msg, code)));
+
+    log.debug('# Load configuration');
     const configData = loadConfiguration(configPath);
 
-    // Get the provider from the config data
+    log.debug('# Get the provider from the config data');
     const providerName = configData.provider;
     if (!providerName) {
       throw new Error('Provider not specified in the configuration file.');
     }
 
-    // Dynamically require the provider module
+    log.debug('# Dynamically import the provider module');
     const providerModulePath = path.join(__dirname, 'providers', `${providerName}.js`);
     if (!fs.existsSync(providerModulePath)) {
       throw new Error(`Provider module '${providerName}' not found.`);
     }
-    const providerModule = require(providerModulePath);
+    const providerModule = await import(pathToFileURL(providerModulePath).href);
 
-    // Get input data (from file or stdin)
+    log.debug('# Get input data (from file or stdin)');
     const inputData = await getInputData(filePath);
 
-    // Load pre-prompt if specified
+    log.debug('# Load pre-prompt if specified');
     let prePrompt = '';
     if (prePromptOption) {
       prePrompt = loadPrePrompt(prePromptOption);
     }
 
-    // Determine how to get the main prompt
+    log.debug('# Determine how to get the main prompt');
     const prompt = await getPrompt(useEditor, promptMessage, prePrompt);
 
-    // Combine pre-prompt and prompt
+    log.debug('# Disable terminal input');
+    process.stdin.pause();
+
+    log.debug('# Combine pre-prompt and prompt');
     const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
 
-    // Inform the user that the prompt is received
-    console.error('\nPrompt received. Retrieving response... (Further input will not be considered)');
+    log.debug('# Generate AI response');
+    // Generate AI response using ora-promise for spinner management
+    const aiReply = await withSpinner(
+      providerModule.getAIResponse(configData, inputData, fullPrompt),
+      {
+        text: 'Retrieving AI response...',
+        spinner: 'dots',
+      }
+    );
 
-    // Generate AI response
-    const aiReply = await providerModule.getAIResponse(configData, inputData, fullPrompt);
+    log.debug('# Re-enable terminal input');
+    process.stdin.resume();
 
-    // Output the AI's reply
+    log.debug("# Output the AI's reply");
     await outputResult(aiReply, outputFile);
-  } catch (error) {
-    console.error('Error:', error.message);
-    process.exit(1);
-  }
-}
-
-/**
- * Function to load the configuration.
- *
- * @param {string} [configOption] - The configuration file path or name.
- * @returns {object} - The parsed configuration data.
- * @throws {Error} - If the configuration file is missing required fields or not found.
- */
-function loadConfiguration(configOption) {
-  // Load the configuration file content
-  const content = loadFile(configOption || 'config', 'config');
-
-  // Parse the YAML configuration
-  const data = yaml.load(content);
-
-  // Validate that the 'provider' key exists
-  if (!data.provider) {
-    throw new Error("Configuration error: 'provider' key is missing in the configuration file.");
-  }
-
-  return data;
-}
-
-/**
- * Function to load a pre-defined prompt based on name or path.
- *
- * @param {string} promptOption - The name or path of the prompt file.
- * @returns {string} - The content of the prompt file.
- * @throws {Error} - If the prompt file is not found.
- */
-function loadPrePrompt(promptOption) {
-  if (!promptOption) {
-    throw new Error("Prompt option '-p' or '--prompt' requires a value.");
-  }
-
-  // Load the prompt file content
-  return loadFile(promptOption, 'prompt');
-}
-
-/**
- * Determines and retrieves the main prompt based on user-specified options.
- *
- * @param {boolean} useEditor - Flag indicating whether to use the default editor for prompt composition.
- * @param {string} promptMessage - The custom message provided via the `-m` or `--message` option.
- * @param {string} prePrompt - The pre-defined prompt content loaded via the `-p` or `--prompt` option.
- * @returns {Promise<string>} - The final prompt to be used for the AI API.
- */
-async function getPrompt(useEditor, promptMessage, prePrompt) {
-  // Initialize the prompt variable to store the final prompt
-  let prompt = '';
-
-  // Step 1: Use the default editor to compose the prompt if the `--editor` flag is set
-  if (useEditor) {
-    try {
-      // Invoke the editor and await the user's input
-      prompt = await getPromptFromEditor();
-    } catch (err) {
-      // Handle any errors that occur while opening the editor
-      console.error(`Error: ${err.message}`);
-      process.exit(1); // Exit the process with a failure code
+  } catch (err) {
+    if (err.stack) {
+      cleanup(`${err.message}\nStack Trace:\n${err.stack}`, 1);
+    } else {
+      cleanup(err.message, 1);
     }
+  } finally {
+    log.debug('# Cleanup task such as resume stdin');
+    cleanup('', 0);
   }
-
-  // Step 2: Append the message provided via the `-m` or `--message` option, if available
-  if (promptMessage) {
-    prompt += `\n${promptMessage}`;
-  }
-
-  // Step 3: If no pre-prompt, no message, and editor is not used, invoke the interactive prompt
-  if (!prePrompt && !promptMessage && !useEditor) {
-    try {
-      // Invoke an interactive prompt to get the user's input
-      prompt = await getInteractiveUserPrompt();
-    } catch (err) {
-      // Handle any errors that occur during the interactive prompt
-      console.error(`Error: ${err.message}`);
-      process.exit(1); // Exit the process with a failure code
-    }
-  }
-
-  return prompt;
 }
 
 // Execute the main function

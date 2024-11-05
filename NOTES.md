@@ -8,3 +8,6 @@ and upon save and close add the prompt message
 - refactor code for config and prompt so they use same code for lookups
 - rename config/ to models/
 - when you use -m with no option also opens interactive prompting
+- make writting in the default editor in order to take the prompt very similar to git 
+- use ES modules instead: keep pipe-ai.js (which only has a main function) and create an pipe-ai-api.mjs which hosts the main pipe-ai functions.
+- IMPORTANT: make sure the readline input is locled while procesing so not to record keys and execute them afterwards!

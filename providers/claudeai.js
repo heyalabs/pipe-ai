@@ -1,7 +1,15 @@
-// Hypothetical import; replace with actual Claude AI SDK import
-// const { ClaudeAIClient } = require('claudeai');
+// claudeai.js
+// Replace the hypothetical import with the actual Claude AI SDK import
+import { ClaudeAIClient } from 'claudeai'; // Ensure 'claudeai' supports ES modules
 
-async function getAIResponse(configData, inputData, prompt) {
+/**
+ * Function to get AI response from Claude AI.
+ * @param {Object} configData - Configuration data containing API keys and settings.
+ * @param {string} inputData - Input data (e.g., system prompt).
+ * @param {string} prompt - User prompt.
+ * @returns {Promise<string>} - AI's reply.
+ */
+export async function getAIResponse(configData, inputData, prompt) {
   // Initialize Claude AI client
   const claudeClient = new ClaudeAIClient({
     ...configData.configuration,
@@ -20,5 +28,3 @@ async function getAIResponse(configData, inputData, prompt) {
   // Extract the AI's reply
   return response.completion;
 }
-
-module.exports = { getAIResponse };

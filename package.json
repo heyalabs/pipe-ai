@@ -1,6 +1,7 @@
 {
   "name": "pipe-ai",
   "version": "1.0.0",
+  "type": "module",
   "description": "A command-line tool to interface with OpenAI API using piped input or files.",
   "main": "pipe-ai.js",
   "author": "Alex Ksikes",
@@ -14,6 +15,9 @@
   "dependencies": {
     "commander": "^12.1.0",
     "js-yaml": "^4.1.0",
-    "openai": "^4.69.0"
+    "openai": "^4.69.0",
+    "ora": "^8.1.1",
+    "process": "^0.11.10",
+    "winston": "^3.16.0"
   }
 }
