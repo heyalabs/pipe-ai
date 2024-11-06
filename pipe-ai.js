@@ -41,10 +41,11 @@
 import fs from 'fs';
 import path from 'path';
 import { Command } from 'commander';
-import { log, withSpinner } from './lib/utils.js';
-import { getInputData, outputResult, getDirname } from './lib/common.js';
+import { withSpinner, getDirname } from './lib/utils.js';
+import { outputResult, log } from './lib/output.js'
 import process from 'process';
 import { pathToFileURL } from 'url';
+import { getInputData } from './lib/input.js'; 
 
 import {
   loadConfiguration,
@@ -145,6 +146,7 @@ async function main() {
 
     log.debug("# Output the AI's reply");
     await outputResult(aiReply, outputFile);
+
   } catch (err) {
     if (err.stack) {
       cleanup(`${err.message}\nStack Trace:\n${err.stack}`, 1);

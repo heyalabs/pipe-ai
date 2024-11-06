@@ -1,8 +1,9 @@
 // pipe-ai-api.js
 
 import yaml from 'js-yaml';
-import { loadFile, log } from './lib/utils.js';
-import { getInteractiveUserPrompt, getPromptFromEditor } from './lib/common.js';
+import { loadFile } from './lib/utils.js';
+import { log } from './lib/output.js';
+import { getInteractiveUserPrompt, getPromptFromEditor } from './lib/input.js';
 
 /**
  * Function to load the configuration.
@@ -112,8 +113,10 @@ export function cleanup(message, exitCode = 1) {
   if (message) {
     log.error(`${message}`);
   }
-  log.debug('# Cleaning up…');
-  process.stdin.resume(); // Ensure stdin is resumed
+
+  log.debug('Re-enable input and close readline interface');
+  process.stdin.resume();
+
   if (exitCode !== 0) {
     process.exit(exitCode); // Exit the process with the provided exit code
   }
