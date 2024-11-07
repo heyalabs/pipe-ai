@@ -38,32 +38,17 @@
  */
 
 // Import necessary modules
-import fs from 'fs';
-import path from 'path';
 import { Command } from 'commander';
-import { withSpinner, getDirname } from './lib/utils.js';
-import { outputResult, log } from './lib/output.js'
+import { withSpinner } from './lib/utils.js';
+import { log } from './lib/output.js'
 import process from 'process';
-import { pathToFileURL } from 'url';
-import { getInputData } from './lib/input.js'; 
 
-import {
-  loadConfiguration,
-  loadPrePrompt,
-  getPrompt,
-  handleSigint,
-  handleSigterm,
-  cleanup
-} from './pipe-ai-api.js';
+import * as api from './pipe-ai-api.js';
+import * as input from './lib/input.js';
+import * as output from './lib/output.js'
 
 // Initialize the command-line interface
-const program = new Command();
-
-// Derive __dirname equivalent in ES modules
-const __dirname = getDirname(import.meta.url);
-
-// Define the CLI options and arguments
-program
+const program = new Command()
   .version('1.0.0')
   .description('A CLI tool to interface with AI APIs using piped input or files.')
   .argument('[file]', 'File path to read input from')
@@ -85,45 +70,31 @@ const configPath = options.config;
 const useEditor = options.editor;
 const verbose = options.verbose;
 
-// Optionally adjust logger level based on verbosity
-log.level = verbose ? 'debug' : 'error';
-
 /**
  * Main function to run the script.
  */
 async function main() {
   try {
+    log.debug('# Adjust logger level based on verbosity');
+    log.level = verbose ? 'debug' : 'error';
+
     log.debug('# Attach signal handlers');
-    process.on('SIGINT', () => handleSigint((msg, code) => cleanup(msg, code)));
-    process.on('SIGTERM', () => handleSigterm((msg, code) => cleanup(msg, code)));
+    api.attachSignalHandlers(process)
 
     log.debug('# Load configuration');
-    const configData = loadConfiguration(configPath);
-
-    log.debug('# Get the provider from the config data');
-    const providerName = configData.provider;
-    if (!providerName) {
-      throw new Error('Provider not specified in the configuration file.');
-    }
+    const configData = api.loadConfiguration(configPath);
 
     log.debug('# Dynamically import the provider module');
-    const providerModulePath = path.join(__dirname, 'providers', `${providerName}.js`);
-    if (!fs.existsSync(providerModulePath)) {
-      throw new Error(`Provider module '${providerName}' not found.`);
-    }
-    const providerModule = await import(pathToFileURL(providerModulePath).href);
+    const providerModule = await api.getProviderModule(configData)
 
-    log.debug('# Get input data (from file or stdin)');
-    const inputData = await getInputData(filePath);
+    log.debug('# Load the input data (from file or stdin)');
+    const inputData = await input.getInputData(filePath);
 
     log.debug('# Load pre-prompt if specified');
-    let prePrompt = '';
-    if (prePromptOption) {
-      prePrompt = loadPrePrompt(prePromptOption);
-    }
+    const prePrompt = prePromptOption ? api.loadPrePrompt(prePromptOption) : '';
 
     log.debug('# Determine how to get the main prompt');
-    const prompt = await getPrompt(useEditor, promptMessage, prePrompt);
+    const prompt = await api.getPrompt(useEditor, promptMessage, prePrompt);
 
     log.debug('# Combine pre-prompt and prompt');
     const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
@@ -139,17 +110,12 @@ async function main() {
     );
 
     log.debug("# Output the AI's reply");
-    await outputResult(aiReply, outputFile);
+    await output.outputResult(aiReply, outputFile);
 
   } catch (err) {
-    if (err.stack) {
-      cleanup(`${err.message}\nStack Trace:\n${err.stack}`, 1);
-    } else {
-      cleanup(err.message, 1);
-    }
+    api.cleanup(err, 1);
   } finally {
-    log.debug('# Cleanup task such as resume stdin');
-    cleanup('', 0);
+    api.cleanup();
   }
 }
 
