@@ -125,9 +125,6 @@ async function main() {
     log.debug('# Determine how to get the main prompt');
     const prompt = await getPrompt(useEditor, promptMessage, prePrompt);
 
-    log.debug('# Disable terminal input');
-    process.stdin.pause();
-
     log.debug('# Combine pre-prompt and prompt');
     const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
 
@@ -140,9 +137,6 @@ async function main() {
         spinner: 'dots',
       }
     );
-
-    log.debug('# Re-enable terminal input');
-    process.stdin.resume();
 
     log.debug("# Output the AI's reply");
     await outputResult(aiReply, outputFile);

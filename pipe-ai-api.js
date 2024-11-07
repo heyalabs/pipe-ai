@@ -3,7 +3,8 @@
 import yaml from 'js-yaml';
 import { loadFile } from './lib/utils.js';
 import { log } from './lib/output.js';
-import { getInteractiveUserPrompt, getPromptFromEditor } from './lib/input.js';
+import { getInteractiveUserPrompt } from './lib/input.js';
+import { getInputFromEditor } from './lib/editorPrompt.js';
 
 /**
  * Function to load the configuration.
@@ -59,7 +60,7 @@ export async function getPrompt(useEditor, promptMessage, prePrompt) {
   if (useEditor) {
     try {
       // Invoke the editor and await the user's input
-      prompt = await getPromptFromEditor();
+      prompt = await getInputFromEditor();
     } catch (err) {
       // Handle any errors that occur while opening the editor
       cleanup(err.message);
@@ -113,9 +114,6 @@ export function cleanup(message, exitCode = 1) {
   if (message) {
     log.error(`${message}`);
   }
-
-  log.debug('Re-enable input and close readline interface');
-  process.stdin.resume();
 
   if (exitCode !== 0) {
     process.exit(exitCode); // Exit the process with the provided exit code
