@@ -42,6 +42,7 @@ import { Command } from 'commander';
 import { withSpinner } from './lib/utils.js';
 import { log } from './lib/output.js'
 import process from 'process';
+import say from 'say';
 
 import * as api from './pipe-ai-api.js';
 import * as input from './lib/input.js';
@@ -57,6 +58,7 @@ const program = new Command()
   .option('-o, --output <file>', 'Output file to save the AI response (default: stdout)')
   .option('-c, --config <name|path>', 'Path of the configuration file (default: ./config/config.yaml)')
   .option('-e, --editor', 'Open the default editor to compose the prompt')
+  .option('-s, --speak [voice]', "Use the system's text-to-speech to read the response aloud")
   .option('-v, --verbose', 'Enable verbose logging')
   .parse(process.argv);
 
@@ -68,6 +70,7 @@ const prePromptOption = options.prePrompt;
 const outputFile = options.output;
 const configPath = options.config;
 const useEditor = options.editor;
+const useSpeak = options.speak;
 const verbose = options.verbose;
 
 /**
@@ -111,6 +114,12 @@ async function main() {
 
     log.debug("# Output the AI's reply");
     await output.outputResult(aiReply, outputFile);
+
+    if (useSpeak) {
+      let voice = typeof useSpeak === 'string' ? useSpeak : undefined;
+      log.debug(`# Initiating text-to-speech ${voice ? `with voice: ${voice}` : ''}`);
+      say.speak(aiReply, voice, 1.0);
+    }
 
   } catch (err) {
     api.cleanup(err, 1);
