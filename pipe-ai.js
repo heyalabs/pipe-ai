@@ -2,9 +2,9 @@
 
 // pipe-ai.js
 /**
- * pipe-ai: A command-line tool to interface with OpenAI API using piped input or files.
+ * pipe-ai: A command-line tool to interface with API using piped input and user's defined prompts.
  *
- * Usage:
+ * Usage Examples:
  *   - Piping input with a prompt provided via the `-m` option:
  *     $ git log | pipe-ai -m "Summarize the git log."
  *
@@ -13,7 +13,7 @@
  *     (The program will prompt you to enter a prompt interactively.)
  *
  *   - Reading input from a file with a prompt provided via the `-m` option:
- *     $ pipe-ai <file path> -m "Your prompt here."
+ *     $ pipe-ai /path/to/input.txt -m "Your prompt here."
  *
  *   - Outputting to a file:
  *     $ git log | pipe-ai -m "Summarize the git log." -o output.txt
@@ -30,11 +30,22 @@
  *   - Using the default editor for prompt composition:
  *     $ git log | pipe-ai --editor
  *
+ *   - Reading the AI's response aloud:
+ *     $ git log | pipe-ai -m "Summarize the git log." --speak
+ *
+ *     Optionally specify a voice:
+ *     $ git log | pipe-ai -m "Summarize the git log." --speak "Alex"
+ *
+ *   - Using a custom configuration file:
+ *     $ git log | pipe-ai -c /path/to/config.yaml -m "Your prompt here."
+ *
+ *   - Enabling verbose logging:
+ *     $ git log | pipe-ai -v -m "Summarize the git log."
+ *
  * Description:
- *   This script reads input from stdin or a file, takes a prompt (either via the `-m` option,
- *   the `-p` option for pre-defined prompts, the `--editor` option to compose in the default editor,
- *   or interactively), and sends the data to the OpenAI API using the configuration specified in `config.yaml`.
- *   The response from the API is then output to stdout or saved to a file if the `-o` option is used.
+ *   This script reads input from stdin or a file, takes a prompt from the user, and sends the data to AI
+ *   using a configuration file (default to `config.yaml`). The response is then output to stdout or saved
+ *   to a file.
  */
 
 // Import necessary modules
