@@ -39,7 +39,7 @@
 
 // Import necessary modules
 import { Command } from 'commander';
-import { withSpinner } from './lib/utils.js';
+import { withSpinner, loadFile } from './lib/utils.js';
 import { log } from './lib/output.js'
 import process from 'process';
 import say from 'say';
@@ -94,16 +94,24 @@ async function main() {
     const inputData = await input.getInputData(filePath);
 
     log.debug('# Load pre-prompt if specified');
-    const prePrompt = prePromptOption ? api.loadPrePrompt(prePromptOption) : '';
+    const prePrompt = prePromptOption ? loadFile(prePromptOption, 'prompt') : '';
+    prePrompt ? log.verbose(`Pre Prompt: ${prePrompt}`) : null;
 
-    log.debug('# Determine how to get the main prompt');
-    const prompt = await api.getPrompt(useEditor, promptMessage, prePrompt);
+    log.debug('# Get prompt from --editor, -m or interactively');
+    let prompt = '';
+    if (useEditor) {
+      prompt = await input.getInputFromEditor();
+    } else if(!prePrompt && !promptMessage) {
+      prompt = await input.getInteractiveUserPrompt();
+    } else {
+      prompt = promptMessage ? promptMessage : '';
+    }
+    log.verbose(`User Prompt: ${prompt}`);
 
     log.debug('# Combine pre-prompt and prompt');
-    const fullPrompt = [prePrompt, prompt].filter(Boolean).join('\n');
+    const fullPrompt = [prePrompt, prompt].join('\n');
 
     log.debug('# Generate AI response');
-    // Generate AI response using ora-promise for spinner management
     const aiReply = await withSpinner(
       providerModule.getAIResponse(configData, inputData, fullPrompt),
       {

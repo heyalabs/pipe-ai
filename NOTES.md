@@ -13,3 +13,4 @@ and upon save and close add the prompt message
 - IMPORTANT: make sure the readline input is locled while procesing so not to record keys and execute them afterwards!
 - pipe-ai leads to ask for the prompt from stdin (in the future repl mode)
 - Editor Prompt: instead of a temp file we could do what git does ("~/Developer/ScriptMind/pipe-ai/.git/COMMIT_EDITMSG" 16L, 433B)
+- have logger in one file in order to avoid cross links

@@ -3,8 +3,6 @@
 import yaml from 'js-yaml';
 import { loadFile, getDirname } from './lib/utils.js';
 import { log } from './lib/output.js';
-import { getInteractiveUserPrompt } from './lib/input.js';
-import { getInputFromEditor } from './lib/editorPrompt.js';
 import { pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -56,64 +54,6 @@ export async function getProviderModule(configData) {
   }
 
   return await import(pathToFileURL(providerModulePath).href);
-}
-
-/**
- * Function to load a pre-defined prompt based on name or path.
- *
- * @param {string} promptOption - The name or path of the prompt file.
- * @returns {string} - The content of the prompt file.
- * @throws {Error} - If the prompt file is not found.
- */
-export function loadPrePrompt(promptOption) {
-  if (!promptOption) {
-    throw new Error("Prompt option '-p' or '--prompt' requires a value.");
-  }
-
-  // Load the prompt file content
-  return loadFile(promptOption, 'prompt');
-}
-
-/**
- * Determines and retrieves the main prompt based on user-specified options.
- *
- * @param {boolean} useEditor - Flag indicating whether to use the default editor for prompt composition.
- * @param {string} promptMessage - The custom message provided via the `-m` or `--message` option.
- * @param {string} prePrompt - The pre-defined prompt content loaded via the `-p` or `--prompt` option.
- * @returns {Promise<string>} - The final prompt to be used for the AI API.
- */
-export async function getPrompt(useEditor, promptMessage, prePrompt) {
-  // Initialize the prompt variable to store the final prompt
-  let prompt = '';
-
-  // Step 1: Use the default editor to compose the prompt if the `--editor` flag is set
-  if (useEditor) {
-    try {
-      // Invoke the editor and await the user's input
-      prompt = await getInputFromEditor();
-    } catch (err) {
-      // Handle any errors that occur while opening the editor
-      cleanup(err.message);
-    }
-  }
-
-  // Step 2: Append the message provided via the `-m` or `--message` option, if available
-  if (promptMessage) {
-    prompt += `\n${promptMessage}`;
-  }
-
-  // Step 3: If no pre-prompt, no message, and editor is not used, invoke the interactive prompt
-  if (!prePrompt && !promptMessage && !useEditor) {
-    try {
-      // Invoke an interactive prompt to get the user's input
-      prompt = await getInteractiveUserPrompt();
-    } catch (err) {
-      // Handle any errors that occur during the interactive prompt
-      cleanup(err.message);
-    }
-  }
-
-  return prompt;
 }
 
 /**
