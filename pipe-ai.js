@@ -131,7 +131,7 @@ async function main() {
     } else {
       prompt = promptMessage ? promptMessage : ''
     }
-    log.verbose(`User Prompt: ${prompt}`)
+    prompt ? log.verbose(`User Prompt: ${prompt}`) : ''
 
     log.debug('# Combine pre-prompt and prompt')
     const fullPrompt = [prePrompt, prompt].join('\n')

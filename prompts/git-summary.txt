@@ -1,0 +1,19 @@
+You are given a set of commit messages in order from oldest to earliest. From these commit messages I would like to see a change log. The change log will then be shown to users so they can read what has been added in between each new versions. For reference the input you are getting is the one after having executing the following command in a given git repo:
+
+Example of a git command you will be receiving the results from:
+
+git log --decorate v2.1.0..v2.3.0 --reverse
+
+In order to know the version simply look for a (tag: v2.2.0 or 2.3.0).
+
+I would like as output to be getting something like this:
+
+# Version 2.2.0
+
+Bullet points describing new change. Only show user facing changes. Leave out any technical details, geared towards developpers. Be user friendly, user centric.
+
+# Verion 2.3.0
+
+Same instructions as in version 2.2.0
+
+Use markdown for the formatting. Only return the specified output.
