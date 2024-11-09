@@ -1,12 +1,12 @@
 // pipe-ai-api.js
 
-import yaml from 'js-yaml';
-import { loadFile, getDirname } from './lib/utils.js';
-import { log } from './lib/output.js';
-import { pathToFileURL } from 'url';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import yaml from 'js-yaml'
+import { loadFile, getDirname } from './lib/utils.js'
+import { log } from './lib/output.js'
+import { pathToFileURL } from 'url'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 /**
  * Function to load the configuration.
@@ -17,17 +17,19 @@ import os from 'os';
  */
 export function loadConfiguration(configOption) {
   // Load the configuration file content
-  const content = loadFile(configOption || 'config', 'config');
+  const content = loadFile(configOption || 'config', 'config')
 
   // Parse the YAML configuration
-  const data = yaml.load(content);
+  const data = yaml.load(content)
 
   // Validate that the 'provider' key exists
   if (!data.provider) {
-    throw new Error("The 'provider' key is missing from the configuration file.");
+    throw new Error(
+      "The 'provider' key is missing from the configuration file."
+    )
   }
 
-  return data;
+  return data
 }
 
 /**
@@ -39,21 +41,25 @@ export function loadConfiguration(configOption) {
  */
 export async function getProviderModule(configData) {
   // Derive __dirname equivalent in ES modules
-  const __dirname = getDirname(import.meta.url);
+  const __dirname = getDirname(import.meta.url)
 
-  log.debug('Get the provider from the config data');
-  const providerName = configData.provider;
+  log.debug('Get the provider from the config data')
+  const providerName = configData.provider
   if (!providerName) {
-    throw new Error('Provider not specified in the configuration file.');
+    throw new Error('Provider not specified in the configuration file.')
   }
 
-  log.debug('Import the provider module');
-  const providerModulePath = path.join(__dirname, 'providers', `${providerName}.js`);
+  log.debug('Import the provider module')
+  const providerModulePath = path.join(
+    __dirname,
+    'providers',
+    `${providerName}.js`
+  )
   if (!fs.existsSync(providerModulePath)) {
-    throw new Error(`Provider module '${providerName}' not found.`);
+    throw new Error(`Provider module '${providerName}' not found.`)
   }
 
-  return await import(pathToFileURL(providerModulePath).href);
+  return await import(pathToFileURL(providerModulePath).href)
 }
 
 /**
@@ -64,13 +70,13 @@ export async function getProviderModule(configData) {
  */
 export function cleanup(err = null, exitCode = 0) {
   if (err instanceof Error) {
-    log.error(err.message);
-    log.debug(err.stack);
+    log.error(err.message)
+    log.debug(err.stack)
   }
 
-  log.debug('# Cleaning up…');
+  log.debug('# Cleaning up…')
   if (exitCode !== 0) {
-    process.exit(exitCode); // Exit the process with the provided exit code
+    process.exit(exitCode) // Exit the process with the provided exit code
   }
 }
 
@@ -81,10 +87,16 @@ export function cleanup(err = null, exitCode = 0) {
  */
 export function attachSignalHandlers(process) {
   process.on('SIGINT', () => {
-    cleanup(new Error('Process interrupted by SIGINT (Ctrl+C).'), 128 + os.constants.signals.SIGINT);
-  });
-  
+    cleanup(
+      new Error('Process interrupted by SIGINT (Ctrl+C).'),
+      128 + os.constants.signals.SIGINT
+    )
+  })
+
   process.on('SIGTERM', () => {
-    cleanup(new Error('Process terminated by SIGTERM.'), 128 + os.constants.signals.SIGTERM);
-  });
+    cleanup(
+      new Error('Process terminated by SIGTERM.'),
+      128 + os.constants.signals.SIGTERM
+    )
+  })
 }
