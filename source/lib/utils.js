@@ -19,8 +19,8 @@ export function loadFile(identifier, type) {
   // Derive __dirname equivalent in ES modules
   const __dirname = getDirname(import.meta.url)
 
-  // Define the root directory as the parent of `lib`
-  const rootDir = path.resolve(__dirname, '..')
+  // Define the root directory as the parent of `source/lib`
+  const rootDir = path.resolve(__dirname, '../..')
 
   // Define configuration for each file type
   const FILE_TYPES = {

@@ -50,14 +50,14 @@
 
 // Import necessary modules
 import { Command } from 'commander'
-import { withSpinner, loadFile } from './lib/utils.js'
-import { log } from './lib/output.js'
+import { withSpinner, loadFile } from './source/lib/utils.js'
+import { log } from './source/lib/output.js'
 import process from 'process'
 import say from 'say'
 
-import * as api from './pipe-ai-api.js'
-import * as input from './lib/input.js'
-import * as output from './lib/output.js'
+import * as api from './source/pipe-ai-api.js'
+import * as input from './source/lib/input.js'
+import * as output from './source/lib/output.js'
 
 // Initialize the command-line interface
 const program = new Command()
