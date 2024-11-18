@@ -58,6 +58,7 @@ import say from 'say'
 import * as api from './source/pipe-ai-api.js'
 import * as input from './source/lib/input.js'
 import * as output from './source/lib/output.js'
+import { Brain } from './source/brain.js'
 
 // Initialize the command-line interface
 const program = new Command()
@@ -147,6 +148,19 @@ async function main() {
 
     log.debug("# Output the AI's reply")
     await output.outputResult(aiReply, outputFile)
+
+    log.debug('# Init Brain instance to save interaction')
+    const brain = new Brain()
+    await brain.init()
+
+    log.debug('# Saving AI interaction')
+    await brain.saveAIInteraction(
+      aiReply,
+      configData,
+      inputData,
+      prePrompt,
+      prompt
+    )
 
     if (useSpeak) {
       let voice = typeof useSpeak === 'string' ? useSpeak : undefined

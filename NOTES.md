@@ -19,3 +19,25 @@
 pipe-ai --continue <conversation_id>
 pipe-ai list
 pipe-ai show <conversation_id>
+
+pipe-ai history
+
+id401... "Last message..."
+id002... "Last message..."
+id102... "Last message..."
+id001... "Last message..."
+id301... "Last message..."
+id231... "Last message..."
+
+pipe-ai history --summaries
+
+id401... "Summary..."
+id002... "Summary..."
+id102... "Summary..."
+id001... "Summary..."
+id301... "Summary..."
+id231... "Summary..."
+
+pipe-ai show <conversation_id>
+
+pipe-ai --select <conversation_id> -m "Could you tell me some more?"

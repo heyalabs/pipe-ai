@@ -13,13 +13,16 @@
     "node": "20.18.0"
   },
   "dependencies": {
+    "better-sqlite3": "^11.5.0",
     "commander": "^12.1.0",
     "js-yaml": "^4.1.0",
     "openai": "^4.69.0",
     "ora": "^8.1.1",
     "process": "^0.11.10",
     "say": "^0.16.0",
+    "sqlite": "^5.1.1",
     "tmp-promise": "^3.0.3",
+    "uuid": "^11.0.3",
     "winston": "^3.16.0"
   }
 }
