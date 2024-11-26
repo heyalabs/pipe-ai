@@ -86,6 +86,11 @@ const program = new Command()
     "Use the system's text-to-speech to read the response aloud"
   )
   .option('-v, --verbose', 'Enable verbose logging')
+  .option('--no-logs', "Don't save the AI interaction to the database")
+  .option(
+    '-d, --db <path>',
+    'Specify a custom database path to save the AI interaction (default: ./config/pipe-ai/db/default.sqlite)'
+  )
   .parse(process.argv)
 
 // Extract options and arguments
@@ -98,6 +103,8 @@ const configPath = options.config
 const useEditor = options.editor
 const useSpeak = options.speak
 const verbose = options.verbose
+const logs = options.logs
+const dbPath = options.db
 
 /**
  * Main function to run the script.
@@ -121,7 +128,7 @@ async function main() {
 
     log.debug('# Load pre-prompt if specified')
     const prePrompt = prePromptOption ? loadFile(prePromptOption, 'prompt') : ''
-    prePrompt ? log.verbose(`Pre Prompt: ${prePrompt}`) : null
+    if (prePrompt) log.verbose(`Pre Prompt: ${prePrompt}`)
 
     log.debug('# Get prompt from --editor, -m or interactively')
     let prompt = ''
@@ -132,7 +139,7 @@ async function main() {
     } else {
       prompt = promptMessage ? promptMessage : ''
     }
-    prompt ? log.verbose(`User Prompt: ${prompt}`) : ''
+    if (prompt) log.verbose(`User Prompt: ${prompt}`)
 
     log.debug('# Combine pre-prompt and prompt')
     const fullPrompt = [prePrompt, prompt].join('\n')
@@ -149,18 +156,22 @@ async function main() {
     log.debug("# Output the AI's reply")
     await output.outputResult(aiReply, outputFile)
 
-    log.debug('# Init Brain instance to save interaction')
-    const brain = new Brain()
-    await brain.init()
+    if (logs != false) {
+      log.debug('# Init Brain instance to save interaction')
+      const brain = new Brain(dbPath)
+      await brain.init()
 
-    log.debug('# Saving AI interaction')
-    await brain.saveAIInteraction(
-      aiReply,
-      configData,
-      inputData,
-      prePrompt,
-      prompt
-    )
+      log.debug('# Saving AI interaction')
+      await brain.saveAIInteraction(
+        aiReply,
+        configData,
+        inputData,
+        prePrompt,
+        prompt
+      )
+    } else {
+      log.debug('# Skipping saving AI interaction due to --no-logs option')
+    }
 
     if (useSpeak) {
       let voice = typeof useSpeak === 'string' ? useSpeak : undefined

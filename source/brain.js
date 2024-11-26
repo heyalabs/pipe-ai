@@ -11,9 +11,10 @@ import fs from 'fs'
  * Brain class
  */
 export class Brain {
-  constructor() {
+  constructor(customDbPath) {
     // Initialize the SQLite database connection using better-sqlite3
-    this.db = new Database(this._getDefaultDatabasePath()) // This is a synchronous API
+    const dbPath = customDbPath || this._getDefaultDatabasePath()
+    this.db = new Database(dbPath) // This is a synchronous API
   }
 
   /**
@@ -80,7 +81,7 @@ export class Brain {
 
   /**
    * Gets the default path for the database file.
-   * The path is `~/.config/pipe-ai/DB/default.sqlite`.
+   * The path is `~/.config/pipe-ai/db/default.sqlite`.
    * @returns {string} The full path to the default database file.
    */
   _getDefaultDatabasePath() {
