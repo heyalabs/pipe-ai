@@ -58,6 +58,7 @@ import say from 'say'
 import * as api from './source/pipe-ai-api.js'
 import * as input from './source/lib/input.js'
 import * as output from './source/lib/output.js'
+import { getInputFromEditor } from './source/lib/editorPrompt.js'
 import { Brain } from './source/brain.js'
 
 // Initialize the command-line interface
@@ -133,7 +134,7 @@ async function main() {
     log.debug('# Get prompt from --editor, -m or interactively')
     let prompt = ''
     if (useEditor) {
-      prompt = await input.getInputFromEditor()
+      prompt = await getInputFromEditor()
     } else if (!prePrompt && !promptMessage) {
       prompt = await input.getInteractiveUserPrompt()
     } else {
