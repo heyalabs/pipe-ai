@@ -90,6 +90,30 @@ export function loadFile(identifier, type) {
 }
 
 /**
+ * Strip comment lines (those starting with `#` after optional whitespace) from text.
+ *
+ * @param {string} text - The raw text.
+ * @returns {string} - The text with comment lines removed and trimmed.
+ */
+export function stripComments(text) {
+  return text
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n')
+    .trim()
+}
+
+/**
+ * Load a pipe (prompt) file and strip comment lines.
+ *
+ * @param {string} identifier - The name or path of the pipe.
+ * @returns {string} - The pipe content with comments removed.
+ */
+export function loadPipe(identifier) {
+  return stripComments(loadFile(identifier, 'prompt'))
+}
+
+/**
  * Wraps a promise with an Ora spinner.
  * @param {Promise} promise - The promise to wrap.
  * @param {Object} options - Spinner options.

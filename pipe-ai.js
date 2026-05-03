@@ -50,7 +50,7 @@
 
 // Import necessary modules
 import { Command } from 'commander'
-import { withSpinner, loadFile } from './source/lib/utils.js'
+import { withSpinner, loadPipe } from './source/lib/utils.js'
 import { log } from './source/lib/output.js'
 import process from 'process'
 import say from 'say'
@@ -60,6 +60,14 @@ import * as input from './source/lib/input.js'
 import * as output from './source/lib/output.js'
 import { getInputFromEditor } from './source/lib/editorPrompt.js'
 import { Brain } from './source/brain.js'
+import {
+  installPipe,
+  uninstallPipe,
+  listInstalledPipes,
+  newPipe,
+  editPipe,
+  showPipe
+} from './source/lib/install.js'
 
 // Initialize the command-line interface
 const program = new Command()
@@ -92,25 +100,114 @@ const program = new Command()
     '-d, --db <path>',
     'Specify a custom database path to save the AI interaction (default: ./config/pipe-ai/db/default.sqlite)'
   )
-  .parse(process.argv)
+  .action(main)
 
-// Extract options and arguments
-const options = program.opts()
-const filePath = program.args[0]
-const promptMessage = options.message
-const prePromptOption = options.prePrompt
-const outputFile = options.output
-const configPath = options.config
-const useEditor = options.editor
-const useSpeak = options.speak
-const verbose = options.verbose
-const logs = options.logs
-const dbPath = options.db
+program
+  .command('install <name>')
+  .description(
+    'Install a pipe as a standalone command in ~/.config/pipe-ai/bin'
+  )
+  .action((name) => {
+    try {
+      installPipe(name)
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+program
+  .command('uninstall <name>')
+  .description('Uninstall a previously installed pipe')
+  .action((name) => {
+    try {
+      uninstallPipe(name)
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+program
+  .command('list')
+  .description('List available pipes (installed pipes are marked with *)')
+  .action(() => {
+    try {
+      listInstalledPipes()
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+program
+  .command('new <name>')
+  .description('Create a new pipe and open it in the editor')
+  .action(async (name) => {
+    try {
+      await newPipe(name)
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+program
+  .command('edit <name>')
+  .description('Edit an existing pipe in the editor')
+  .action(async (name) => {
+    try {
+      await editPipe(name)
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+program
+  .command('show <name>')
+  .description('Print the contents of a pipe')
+  .action((name) => {
+    try {
+      showPipe(name)
+    } catch (err) {
+      api.cleanup(err, 1)
+    }
+  })
+
+// Hide the default `Commands:` section and present grouped subcommands
+program.configureHelp({ visibleCommands: () => [] })
+program.addHelpText(
+  'after',
+  `
+Manage pipes:
+  list                          List available pipes (installed pipes are
+                                marked with *)
+  show <name>                   Print the contents of a pipe
+  new <name>                    Create a new pipe and open it in the editor
+  edit <name>                   Edit an existing pipe in the editor
+
+Install pipes:
+  install <name>                Install a pipe as a standalone command in
+                                ~/.config/pipe-ai/bin
+  uninstall <name>              Uninstall a previously installed pipe
+`
+)
+
+program.parseAsync(process.argv)
 
 /**
  * Main function to run the script.
+ *
+ * @param {string} filePath - File path passed as positional argument.
+ * @param {object} options - Parsed command-line options.
  */
-async function main() {
+async function main(filePath, options) {
+  const promptMessage = options.message
+  const prePromptOption = options.prePrompt
+  const outputFile = options.output
+  const configPath = options.config
+  const useEditor = options.editor
+  const useSpeak = options.speak
+  const verbose = options.verbose
+  const logs = options.logs
+  const dbPath = options.db
+
   try {
     log.debug('# Adjust logger level based on verbosity')
     log.level = verbose ? 'debug' : 'error'
@@ -128,7 +225,7 @@ async function main() {
     const inputData = await input.getInputData(filePath)
 
     log.debug('# Load pre-prompt if specified')
-    const prePrompt = prePromptOption ? loadFile(prePromptOption, 'prompt') : ''
+    const prePrompt = prePromptOption ? loadPipe(prePromptOption) : ''
     if (prePrompt) log.verbose(`Pre Prompt: ${prePrompt}`)
 
     log.debug('# Get prompt from --editor, -m or interactively')
@@ -188,5 +285,3 @@ async function main() {
   }
 }
 
-// Execute the main function
-main()

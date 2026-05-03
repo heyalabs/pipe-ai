@@ -7,6 +7,40 @@ import tmp from 'tmp-promise'
 import { log } from './output.js'
 
 /**
+ * Open an existing file in the user's preferred editor and resolve when closed.
+ *
+ * @param {string} filePath - The path to the file to edit in place.
+ * @returns {Promise<void>}
+ */
+export async function openInEditor(filePath) {
+  const editor = getDefaultEditor()
+  log.debug(`Opening editor: ${editor} ${filePath}`)
+  return new Promise((resolve, reject) => {
+    const child = spawn(editor, [filePath], {
+      stdio: 'inherit',
+      shell: true,
+      env: process.env
+    })
+    child.on('exit', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`Editor exited with code ${code}`))
+    })
+    child.on('error', (err) => {
+      reject(new Error(`Failed to launch editor: ${err.message}`))
+    })
+  })
+}
+
+function getDefaultEditor() {
+  return (
+    process.env.GIT_EDITOR ||
+    process.env.VISUAL ||
+    process.env.EDITOR ||
+    (process.platform === 'win32' ? 'notepad' : 'vi')
+  )
+}
+
+/**
  * Main function to get input from the user's preferred editor.
  * @returns {Promise<string>} - The user's input after editing.
  */
@@ -28,7 +62,7 @@ async function createTempFile() {
       postfix: '.gitmessage'
     })
     const initialContent = `
-# Please enter your input below. Lines starting with '#' will be ignored.
+# Please enter your input above. Lines starting with '#' will be ignored.
 # -------------------------------------------------------------
 # Example:
 # Summarize the following git log to highlight major changes.
