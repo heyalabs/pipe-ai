@@ -2,6 +2,28 @@
 
 A command-line tool to interface with AI APIs using piped input or files.
 
+## In Short
+
+Usage: pipe-ai [options] [file]
+
+A CLI tool to interface with AI APIs using piped input or files.
+
+Arguments:
+file File path to read input from
+
+Options:
+-V, --version output the version number
+-m, --message <prompt> Prompt message for the AI (default: ask)
+-p, --pre-prompt <name|path> Name or path of a pre-defined prompt to use
+-o, --output <file> Output file to save the AI response (default: stdout)
+-c, --config <name|path> Path of the configuration file (default: ./config/config.yaml)
+-e, --editor Open the default editor to compose the prompt
+-s, --speak [voice] Use the system's text-to-speech to read the response aloud
+-v, --verbose Enable verbose logging
+--no-logs Don't save the AI interaction to the database
+-d, --db <path> Specify a custom database path to save the AI interaction (default: ./config/pipe-ai/db/default.sqlite)
+-h, --help display help for command
+
 ## Overview
 
 pipe-ai is a simple and flexible CLI utility that allows you to interact with AI models directly from your terminal. By piping data into the tool or reading from files, you can send prompts and receive AI-generated responses seamlessly. This tool is ideal for developers, data analysts, or anyone who wants to integrate AI capabilities into their command-line workflows.
