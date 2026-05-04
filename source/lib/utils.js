@@ -114,6 +114,28 @@ export function loadPipe(identifier) {
 }
 
 /**
+ * Substitute template variables in a pipe or message string.
+ *
+ *   {{date}}       current date (YYYY-MM-DD)
+ *   {{datetime}}   current date and time (ISO 8601)
+ *   {{env.NAME}}   environment variable NAME (empty string if unset)
+ *
+ * @param {string} text - The text to substitute variables in.
+ * @returns {string} - The text with variables replaced.
+ */
+export function substituteVariables(text) {
+  if (!text) return text
+  const now = new Date()
+  return text
+    .replace(/\{\{date\}\}/g, now.toISOString().slice(0, 10))
+    .replace(/\{\{datetime\}\}/g, now.toISOString())
+    .replace(
+      /\{\{env\.([A-Za-z_][A-Za-z0-9_]*)\}\}/g,
+      (_, name) => process.env[name] ?? ''
+    )
+}
+
+/**
  * Wraps a promise with an Ora spinner.
  * @param {Promise} promise - The promise to wrap.
  * @param {Object} options - Spinner options.

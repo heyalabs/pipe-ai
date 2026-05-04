@@ -1,0 +1,35 @@
+# Generates a conventional-commit-style message from a staged git diff.
+#
+# Usage:
+#   git diff --staged | pipe-ai -p commit-message | git commit -F -
+
+Generate a git commit message from the provided staged diff.
+
+Subject line:
+- Imperative mood ("Add X", "Fix Y", "Remove Z"), under 72 characters.
+- Describe the change concretely. Avoid empty categories like
+  "improvements", "various changes", or "miscellaneous".
+
+Body: one bullet per theme. A theme is a single feature, fix, or
+refactor — not a single file. When one theme spans multiple files,
+keep it as one bullet and name the affected artifacts (functions,
+variables, flags, files, prompts, configs, assets) inline. When
+unrelated changes share a file, give them separate bullets.
+
+For each bullet:
+- Lead with the theme. List affected artifacts inline by name.
+- State the why only when it is not obvious from the change.
+- One line per bullet (long lines are fine). No sub-bullets.
+
+Aim for the fewest bullets that still cover every changed artifact —
+including additions, removals, renames, and content or data files
+like prompts, fixtures, templates, and assets. Do not silently omit
+anything.
+
+Use concrete verbs (add, remove, rename, fix, replace, extract, inline,
+split, merge, wire, route, guard, validate). Avoid empty verbs
+("improve", "enhance", "update", "refactor", "clean up") unless paired
+with a specific noun that gives them content.
+
+Output only the commit message. No preamble, no code fences, no quotes,
+no trailing commentary.

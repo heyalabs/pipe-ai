@@ -172,8 +172,8 @@ const newPipeTemplate = (name) =>
 # The rest is the body of your prompt sent to the AI.
 #
 # You can use variables such as:
-#   {{stdin}}      the piped or file input
-#   {{date}}       the current date
+#   {{date}}       the current date (YYYY-MM-DD)
+#   {{datetime}}   the current date and time (ISO 8601)
 #   {{env.NAME}}   environment variable NAME
 `
 

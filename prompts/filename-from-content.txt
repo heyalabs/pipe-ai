@@ -1,0 +1,14 @@
+# Suggests a filename based on the content of a document.
+#
+# Usage:
+#   pdftotext document.pdf - | pipe-ai -p filename-from-content
+#   cat note.md            | pipe-ai -p filename-from-content
+#   curl -s URL            | pipe-ai -p filename-from-content
+
+Suggest a single filename for the provided document content.
+
+Output exactly one filename: lowercase, kebab-case, no extension,
+under 50 characters. The name should reflect the subject of the document.
+
+Output only the filename, on one line, with no quotes, no path,
+no extension, and no commentary.

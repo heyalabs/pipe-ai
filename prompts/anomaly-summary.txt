@@ -1,0 +1,17 @@
+# Summarizes anomalies and elevated error rates in log output.
+#
+# Usage:
+#   tail -2000 /var/log/app.log | pipe-ai -p anomaly-summary
+#   ssh prod "tail -2000 /var/log/app.log" | pipe-ai -p anomaly-summary
+#   kubectl logs deploy/api --tail=2000 | pipe-ai -p anomaly-summary
+
+Summarize anomalies and elevated error rates in the provided log lines.
+
+Group similar errors together. For each group, output:
+- A short label on one line.
+- One representative example log line.
+- Approximate count.
+- Most likely cause, in one line.
+
+Sort groups from most to least severe. Be terse. Skip routine noise.
+Output only the summary. No preamble.

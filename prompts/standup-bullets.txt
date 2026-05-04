@@ -1,0 +1,13 @@
+# Turns recent commit subjects into standup bullets.
+#
+# Usage:
+#   git log --since=yesterday --author="$(git config user.email)" --format=%s \
+#     | pipe-ai -p standup-bullets
+
+Turn the provided commit subjects into 3 to 5 standup bullets for {{date}}.
+
+Group related commits. Use present-perfect tense ("Finished X",
+"Started Y", "Investigated Z"). Skip commit hashes and jargon.
+Plain English, one line per bullet.
+
+Output only the bullets. No preamble, no header, no closing summary.

@@ -1,0 +1,13 @@
+# Lists the most likely root causes for a stack trace.
+#
+# Usage:
+#   pbpaste | pipe-ai -p stack-trace-triage | pbcopy
+#   cat error.log | pipe-ai -p stack-trace-triage
+
+List the three most likely root causes for the provided stack trace.
+
+Output exactly three bullets, ranked from most to least likely.
+Each bullet is one terse, technical line. Reference specific frames,
+symbols, or error messages from the trace where helpful.
+
+Output only the bullets. No preamble, no closing summary.

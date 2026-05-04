@@ -50,7 +50,11 @@
 
 // Import necessary modules
 import { Command } from 'commander'
-import { withSpinner, loadPipe } from './source/lib/utils.js'
+import {
+  withSpinner,
+  loadPipe,
+  substituteVariables
+} from './source/lib/utils.js'
 import { log } from './source/lib/output.js'
 import process from 'process'
 import say from 'say'
@@ -239,8 +243,11 @@ async function main(filePath, options) {
     }
     if (prompt) log.verbose(`User Prompt: ${prompt}`)
 
-    log.debug('# Combine pre-prompt and prompt')
-    const fullPrompt = [prePrompt, prompt].join('\n')
+    log.debug('# Combine pre-prompt and prompt with variable substitution')
+    const fullPrompt = [
+      substituteVariables(prePrompt),
+      substituteVariables(prompt)
+    ].join('\n')
 
     log.debug('# Generate AI response')
     const aiReply = await withSpinner(
