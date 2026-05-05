@@ -63,7 +63,6 @@ import * as api from './source/pipe-ai-api.js'
 import * as input from './source/lib/input.js'
 import * as output from './source/lib/output.js'
 import { getInputFromEditor } from './source/lib/editorPrompt.js'
-import { Brain } from './source/brain.js'
 import {
   installPipe,
   uninstallPipe,
@@ -99,11 +98,6 @@ const program = new Command()
     "Use the system's text-to-speech to read the response aloud"
   )
   .option('-v, --verbose', 'Enable verbose logging')
-  .option('--no-logs', "Don't save the AI interaction to the database")
-  .option(
-    '-d, --db <path>',
-    'Specify a custom database path to save the AI interaction (default: ./config/pipe-ai/db/default.sqlite)'
-  )
   .action(main)
 
 program
@@ -209,8 +203,6 @@ async function main(filePath, options) {
   const useEditor = options.editor
   const useSpeak = options.speak
   const verbose = options.verbose
-  const logs = options.logs
-  const dbPath = options.db
 
   try {
     log.debug('# Adjust logger level based on verbosity')
@@ -260,23 +252,6 @@ async function main(filePath, options) {
 
     log.debug("# Output the AI's reply")
     await output.outputResult(aiReply, outputFile)
-
-    if (logs != false) {
-      log.debug('# Init Brain instance to save interaction')
-      const brain = new Brain(dbPath)
-      await brain.init()
-
-      log.debug('# Saving AI interaction')
-      await brain.saveAIInteraction(
-        aiReply,
-        configData,
-        inputData,
-        prePrompt,
-        prompt
-      )
-    } else {
-      log.debug('# Skipping saving AI interaction due to --no-logs option')
-    }
 
     if (useSpeak) {
       let voice = typeof useSpeak === 'string' ? useSpeak : undefined

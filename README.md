@@ -20,8 +20,6 @@ Options:
 -e, --editor Open the default editor to compose the prompt
 -s, --speak [voice] Use the system's text-to-speech to read the response aloud
 -v, --verbose Enable verbose logging
---no-logs Don't save the AI interaction to the database
--d, --db <path> Specify a custom database path to save the AI interaction (default: ./config/pipe-ai/db/default.sqlite)
 -h, --help display help for command
 
 ## Overview
